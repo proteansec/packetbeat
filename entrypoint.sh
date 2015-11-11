@@ -37,24 +37,26 @@ sed 's|{{FILEPATH}}|'"${FILEPATH}"'|' -i "$CONFIGFILE"
 sed 's|{{GEOIPPATH}}|'"${GEOIPPATH}"'|' -i "$CONFIGFILE"
 
 # Kibana Dashboards
-for es in $(echo "${ELASTICHOSTS}" | sed 's|,\s*| |g'); do
-  # strip "
-  ses=$(echo $es | tr -d '"')
+if [ "$ELASTICENABLED" = true ]; then
+  for es in $(echo "${ELASTICHOSTS}" | sed 's|,\s*| |g'); do
+    # strip "
+    ses=$(echo $es | tr -d '"')
 
-  # check if already present in ES
-  status=$(curl -i -XHEAD "http://${ses}/packetbeat-*" 2>/dev/null | egrep "HTTP\/1\..?" | cut -d ' ' -f 2)
-  status=${status:-200}
+    # check if already present in ES
+    status=$(curl -i -XHEAD "http://${ses}/packetbeat-*" 2>/dev/null | egrep "HTTP\/1\..?" | cut -d ' ' -f 2)
+    status=${status:-200}
 
-  # add dashboards if not already loaded
-  if((${status}!=200)); then
-    if [ ! -f /tmp/master.zip ]; then
-      curl -L -o /tmp/master.zip https://github.com/elastic/beats-dashboards/archive/master.zip
-      unzip /tmp/master.zip -d /tmp
+    # add dashboards if not already loaded
+    if((${status}!=200)); then
+      if [ ! -f /tmp/master.zip ]; then
+        curl -L -o /tmp/master.zip https://github.com/elastic/beats-dashboards/archive/master.zip
+        unzip /tmp/master.zip -d /tmp
+      fi
+      cd /tmp/beats-dashboards-master/
+      ./load.sh "http://$ses"
     fi
-    cd /tmp/beats-dashboards-master/
-    ./load.sh "http://$ses"
-  fi
-done
+  done
+fi
 
 case ${1} in
   app:start)
